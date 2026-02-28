@@ -1,12 +1,26 @@
 # Virtual environment
 .venv/
 
-# Videos
-data/raw/
-data/processed/
+# Large video files in data/ — place your own in data/raw/
+data/raw/*.mp4
+data/raw/*.avi
+data/raw/*.mov
+data/processed/*.mp4
+data/processed/*.avi
+data/processed/*.pdf
 
-# Model weights
-models/
+# Keep folder structure visible on GitHub
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Model weights — downloaded automatically by Ultralytics on first run
+models/*.pt
+models/*.onnx
+
+# Keep models folder visible
+!models/.gitkeep
+
+# assets/ is tracked (demo videos for README)
 
 # Python
 __pycache__/
@@ -15,3 +29,4 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+assets/

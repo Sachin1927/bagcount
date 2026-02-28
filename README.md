@@ -10,27 +10,25 @@
 
 ## Demo
 
-<div align="center">
+### Raw Input
 
-https://github.com/Sachin1927/bagcount/assets/your-video-id/output.mp4
+https://github.com/Sachin1927/bagcount/raw/main/assets/input.mp4
 
-> **To make the video appear:** Edit this README on GitHub.com → drag and drop
-> `data/processed/output.mp4` into the editor → replace the URL above with the
-> one GitHub generates → commit.
+### Annotated Output — Bags Counted: 2
 
-</div>
+https://github.com/Sachin1927/bagcount/raw/main/assets/output.mp4
 
-### Before vs After
+### What changed between input and output
 
 | | Raw Input | Annotated Output |
 |---|---|---|
-| **Video** | Plain footage from camera | Bounding boxes + track IDs drawn on every bag |
+| **Bags** | Plain footage | Bounding boxes + track IDs on every bag |
 | **Counting line** | Not visible | Green horizontal line at 40% of frame height |
 | **Live count** | None | Red `Bags Counted: N` in top-left corner |
-| **FPS** | None | Yellow FPS counter below the count |
-| **Console** | Silent | Timestamped log — direction (↑↓), ID, running total |
+| **FPS** | None | Yellow FPS counter |
+| **Console** | Silent | Timestamped log with direction (↑↓), ID, running total |
 
-### Sample output from test run
+### Console output from test run
 
 ```
 [14:25:41] INFO  — Video loaded — 4096x2160 @ 24 fps, ~401 frames
