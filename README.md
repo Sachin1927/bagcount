@@ -8,6 +8,41 @@
 
 ---
 
+## Demo
+
+<div align="center">
+
+https://github.com/Sachin1927/bagcount/assets/your-video-id/output.mp4
+
+> **To make the video appear:** Edit this README on GitHub.com → drag and drop
+> `data/processed/output.mp4` into the editor → replace the URL above with the
+> one GitHub generates → commit.
+
+</div>
+
+### Before vs After
+
+| | Raw Input | Annotated Output |
+|---|---|---|
+| **Video** | Plain footage from camera | Bounding boxes + track IDs drawn on every bag |
+| **Counting line** | Not visible | Green horizontal line at 40% of frame height |
+| **Live count** | None | Red `Bags Counted: N` in top-left corner |
+| **FPS** | None | Yellow FPS counter below the count |
+| **Console** | Silent | Timestamped log — direction (↑↓), ID, running total |
+
+### Sample output from test run
+
+```
+[14:25:41] INFO  — Video loaded — 4096x2160 @ 24 fps, ~401 frames
+[14:25:41] INFO  — Counting line placed at Y=864 (ratio=0.40 of height=2160)
+[14:28:45] INFO  — Bag counted ↓  ID=77   total=1
+[14:28:57] INFO  — Bag counted ↑  ID=122  total=2
+[14:29:18] INFO  — Total bags counted : 2
+[14:29:18] INFO  — Output video saved : data/processed/output.mp4
+```
+
+---
+
 ## Problem Statement
 
 In high-traffic environments such as airport luggage carousels, retail spaces, and security checkpoints, manually counting and tracking bags is inefficient and prone to human error. There is a need for an automated, scalable solution that can accurately detect, track, and count specific objects (backpacks, handbags, suitcases) in real-time video feeds without double-counting items that briefly leave and re-enter the camera frame.
