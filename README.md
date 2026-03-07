@@ -1,6 +1,6 @@
 <div align="center">
 
-# BagCount-V1
+# Warehouse-BagCount-V1
 
 **An Industry-Standard Computer Vision Pipeline for Real-Time Bag Detection and Counting**
 
@@ -33,32 +33,24 @@ https://github.com/user-attachments/assets/0d04e9ea-bcd2-48ce-a1bc-fc38111882a5
 
 | | Raw Input | Annotated Output |
 |---|---|---|
-| **Bags** | Plain footage | Bounding boxes + track IDs on every bag |
-| **Counting line** | Not visible | Green horizontal line at 40% of frame height |
-| **Live count** | None | Red `Bags Counted: N` in top-left corner |
-| **FPS** | None | Yellow FPS counter |
-| **Console** | Silent | Timestamped log with direction (↑↓), ID, running total |
+| **Sacks** | Plain footage | Green bounding boxes + persistent track IDs (via ByteTrack) |
+| **Counting line** | Not visible | **Yellow vertical trigger line** separating Truck and Door zones |
+| **Live count** | None | Streamlit dashboard cards for bi-directional counts (`📥 Unloaded` & `📤 Loaded`) |
+| **Environment Data** | None | Live simulated Facility IoT Sensors (Temperature, Humidity, Gas Levels) |
+| **Visual HUD** | Clean feed | On-screen translucent directional labels (`<- TRUCK ZONE` and `DOOR ZONE ->`) |
 
-### Console output from test run
 
-```
-[14:25:41] INFO  — Video loaded — 4096x2160 @ 24 fps, ~401 frames
-[14:25:41] INFO  — Counting line placed at Y=864 (ratio=0.40 of height=2160)
-[14:28:45] INFO  — Bag counted ↓  ID=77   total=1
-[14:28:57] INFO  — Bag counted ↑  ID=122  total=2
-[14:29:18] INFO  — Total bags counted : 2
-[14:29:18] INFO  — Output video saved : data/processed/output.mp4
-```
+
 
 ---
 
 ## Problem Statement
 
-In high-traffic environments such as airport luggage carousels, retail spaces, and security checkpoints, manually counting and tracking bags is inefficient and prone to human error. There is a need for an automated, scalable solution that can accurately detect, track, and count specific objects (backpacks, handbags, suitcases) in real-time video feeds without double-counting items that briefly leave and re-enter the camera frame.
+In high-volume logistics centers and warehouse loading bays, manually tallying bulk goods and sacks during the loading and unloading process is inefficient, labor-intensive, and prone to human error. There is a critical need for an automated, scalable Computer Vision solution capable of accurately detecting, tracking, and counting specific items (sacks/bags) in real-time video feeds. The system must robustly handle complex environments—including worker occlusion, multi-gate camera angles, and bi-directional traffic—to flawlessly distinguish between items being unloaded (Truck to Warehouse) and loaded (Warehouse to Truck) without double-counting or falsely tracking empty-handed personnel.
 
 ## The Solution
 
-BagCount-V1 is a modular computer vision pipeline that uses a state-of-the-art object detection model coupled with a robust tracking algorithm. The system draws a virtual counting line across the video frame and detects when the center point of a tracked bag crosses this threshold, ensuring accurate, deduplicated counting.
+**Warehouse-BagCount-V1** is an enterprise-grade computer vision pipeline integrated into a real-time Streamlit dashboard. Powered by a custom-trained YOLOv8 model and the high-persistence ByteTrack algorithm, the system establishes a vertical "choke-point" trigger line to monitor the origin side and trajectory of every detected sack. By utilizing Origin-Side Memory logic, the system accurately distinguishes between bi-directional movements—flawlessly counting both Unloading (Truck to Warehouse) and Loading (Warehouse to Truck) operations simultaneously. This approach inherently ignores empty-handed workers, prevents double-counting, and outputs live metrics alongside facility IoT data.
 
 ---
 
@@ -66,20 +58,20 @@ BagCount-V1 is a modular computer vision pipeline that uses a state-of-the-art o
 
 | Component | Detail |
 |-----------|--------|
-| Architecture | YOLOv8 Nano (`yolov8n.pt`) via Ultralytics |
-| Tracker | ByteTrack — assigns unique persistent IDs to moving objects |
-| Dataset | COCO pretrained |
-| Target classes | 24 Backpack · 26 Handbag · 28 Suitcase |
+| Architecture | YOLOv8 Custom (`custom_sack_v1.pt` / `best.pt`) via Ultralytics |
+| Tracker | ByteTrack — High persistence configured with `conf=0.05` to prevent ID dropping during motion blur and worker occlusion |
+| Dataset | Custom Warehouse Domain (Fine-tuned specifically for industrial loading bay sacks) |
+| Target classes | Sack / Bag (Custom Class) |
 
 ---
 
 ## System Pipeline
 
-1. **Data Ingestion** — Reads video frame-by-frame via OpenCV.
-2. **Inference & Tracking** — YOLOv8 detects bags; ByteTrack assigns a unique ID to each.
-3. **Mathematical Logic** — Continuously updates each bounding box's center Y-coordinate.
-4. **Line-Crossing Detection** — If a bag crosses the virtual threshold (either direction), the master counter increments and the ID is marked as counted.
-5. **Output Generation** — Renders bounding boxes, track IDs, the counting line, live FPS, and count onto the video and exports as `.mp4`.
+1. **Data Ingestion & Normalization** — Reads video frame-by-frame via OpenCV and resizes the feed to 1024x576 HD to preserve the physical aspect ratio of the sacks.
+2. **Inference & Tracking** — A custom YOLOv8 model detects sacks using an optimized low-confidence threshold (`0.05`); ByteTrack assigns a highly persistent unique ID to handle worker occlusion and motion blur.
+3. **Trajectory & Origin Memory** — Computes the center X-coordinate of each bounding box and records its initial starting zone ("Origin Side") relative to a vertical choke-point line.
+4. **Bi-Directional Crossing Logic** — Evaluates if an ID has crossed the vertical threshold. Based on the movement vector, it strictly increments either the **Unloaded** (Truck → Warehouse) or **Loaded** (Warehouse → Truck) counter, completely ignoring empty-handed workers.
+5. **Dashboard Output** — Renders the tracking boxes, vertical counting line, and translucent UI HUD onto the live Streamlit interface, alongside real-time directional metrics and simulated facility IoT data.
 
 ---
 
@@ -88,9 +80,10 @@ BagCount-V1 is a modular computer vision pipeline that uses a state-of-the-art o
 ```
 bagcount/
 ├── data/
-│   ├── raw/               # Input videos (e.g. test_video.mp4)
+│   ├── raw/               # Input videos (e.g. Problem_Statement_Scenario.mp4)
 │   └── processed/         # Annotated output videos
 ├── models/                # YOLO .pt weights
+│   ├── best.py
 ├── src/                   # Core pipeline modules
 │   ├── config.py          # Hyperparameters & thresholds
 │   ├── data_loader.py     # OpenCV video handling
@@ -102,61 +95,57 @@ bagcount/
 │   ├── run_inference.py   # Main execution entry-point (CLI)
 │   ├── train.py           # Fine-tuning script
 │   └── evaluate.py        # Metrics generation (mAP, Precision)
+├── app.py
+├── yolov8n.pt
 ├── requirements.txt
 └── README.md
 ```
 
 ---
 
+
 ## Architecture & Workflow
 
 ```mermaid
 flowchart TD
-    A([▶ Start]) --> B[parse_args\nCLI flags]
-    B --> C[Load src/config.py\ndefaults]
-    C --> D{Input video\nexists?}
-    D -- No --> E[VideoLoadError\nexit 1]
-    D -- Yes --> F[VideoLoader\nOpenCV cap]
+    A([▶ Start Streamlit App]) --> B[Sidebar: Select Video Scenario]
+    B --> C[Load SCENARIO_CONFIG\ntarget_x line coordinate]
+    C --> D[Initialize Custom YOLOv8\nLoad models/best.pt]
+    D --> E{Video source\nloaded?}
+    E -- No --> F[Streamlit Error\nStop]
+    E -- Yes --> G[Init VideoWriter\noutput_result.mp4]
 
-    F --> G[Compute counting_line_y\nheight × line_ratio]
-    G --> H[BagTracker\nLoad YOLOv8n.pt]
-    H -- model missing --> I[ModelLoadError\nexit 1]
-    H --> J[LineCounter\nline_y set]
-    J --> K[VideoWriter\nmp4v codec]
-    K -- write fail --> L[OutputWriteError\nexit 1]
-    K --> M[/Inference Loop/]
+    G --> H[/Live Inference Loop/]
 
-    M --> N{Next frame\navailable?}
-    N -- No / EOF --> Z
-    N -- Yes --> O[BagTracker\nprocess_frame]
+    H --> I{Next frame\navailable?}
+    I -- No / EOF --> Z([■ Cleanup & Save Video])
+    I -- Yes --> J[Resize frame\n1024x576 HD]
 
-    O --> P{Objects\ndetected?}
-    P -- No --> R
-    P -- Yes --> Q[Extract boxes\n& track_ids]
+    J --> K[ByteTrack Inference\nconf=0.05]
+    K --> L{Objects\ndetected?}
 
-    Q --> QA[LineCounter\nupdate_count]
-    QA --> QB[Prune stale\ntrack_history IDs]
-    QB --> QC{Center Y\ncrossed line?}
-    QC -- Yes --> QD[total_count++\nlog direction up/down]
-    QC -- No --> R
-    QD --> R
+    L -- No --> H
+    L -- Yes --> M[Extract center X & ID]
 
-    R[result.plot\nbounding boxes] --> S[Draw counting\nline + count HUD]
-    S --> T[Draw live\nFPS overlay]
-    T --> U[writer.write\nsave frame]
-    U --> V{--no-display?}
-    V -- No --> W[cv2.imshow\npreview]
-    W --> X{q pressed?}
-    X -- Yes --> Z
-    X -- No --> N
-    V -- Yes --> N
+    M --> N{Is new ID?}
+    N -- Yes --> O[Save Origin Side\nLeft or Right]
+    N -- No --> P{Crossed\ntarget_x line?}
 
-    Z([■ Cleanup — release + log summary])
+    O --> H
+    P -- No --> H
+    P -- Yes --> Q{Which Direction?}
 
-    style E fill:#ff4d4d,color:#fff
-    style I fill:#ff4d4d,color:#fff
-    style L fill:#ff4d4d,color:#fff
-    style QD fill:#00b300,color:#fff
+    Q -- Left to Right --> R[bags_in++\nUnloaded]
+    Q -- Right to Left --> S[bags_out++\nLoaded]
+
+    R --> T[Update Dashboard UI\n& IoT Sensors]
+    S --> T
+    T --> U[out_video.write\nSave frame]
+    U --> H
+
+    style F fill:#ff4d4d,color:#fff
+    style R fill:#00b300,color:#fff
+    style S fill:#00b300,color:#fff
     style Z fill:#333,color:#fff
     style A fill:#0057b7,color:#fff
 ```
@@ -173,36 +162,50 @@ pip install -r requirements.txt
 
 ### 2. Add your video
 
-Place the input video inside `data/raw/` and name it `test_video.mp4`.
+Place the input video inside `data/raw/` and name it `Problem Statement Scenario.mp4`.
 
 ### 3. Run the pipeline
 
+Launch the interactive dashboard using Streamlit:
+
 ```bash
-# Default — uses settings from src/config.py
-python scripts/run_inference.py
+streamlit run app.py
 
-# Custom input/output paths
-python scripts/run_inference.py --input data/raw/airport.mp4 --output data/processed/out.mp4
 
-# Move the counting line to 60 % of frame height
-python scripts/run_inference.py --line-ratio 0.6
+# Dashboard Controls & Configuration
+  Instead of passing command-line arguments, the system is now controlled directly through the UI and a simple config dictionary:
 
-# Higher confidence, headless (no display window)
-python scripts/run_inference.py --conf 0.40 --no-display
+# Switching Videos: Use the dropdown menu in the left sidebar of the web dashboard to instantly switch between different warehouse scenarios (Loading, Unloading,     Gate Perspective).
+
+# Moving the Counting Line: To adjust the vertical trigger line for a specific camera angle, open app.py and modify the SCENARIO_CONFIG dictionary at the top of      the file:
+```bash
+# Inside app.py
+SCENARIO_CONFIG = {
+    "Scenario 1 (Active Loading)": {
+        "path": "data/raw/Problem Statement Scenario1.mp4",
+        "center_line": 580  # Decrease to move LEFT, Increase to move RIGHT
+    }
+}
+
+# Video Export: The system automatically renders the annotated frames and provides a "Download Result Video" button directly in the dashboard sidebar once         processing completes.
 ```
 
-### CLI flags
+### Dashboard Controls & Parameters
 
-| Flag | Default | Description |
+The command-line interface (CLI) has been replaced with an intuitive Streamlit UI and a centralized configuration dictionary in `app.py`.
+
+| Feature | New Control Method | Description |
 |------|---------|-------------|
-| `--input PATH` | `config.VIDEO_PATH` | Input video file |
-| `--output PATH` | `config.OUTPUT_PATH` | Annotated output video |
-| `--line-ratio FLOAT` | `0.40` | Counting line as fraction of frame height (0–1) |
-| `--conf FLOAT` | `0.25` | Detection confidence threshold (0–1) |
-| `--no-display` | off | Disable live preview window (headless mode) |
+| **Input Video** | UI Sidebar Dropdown | Select between pre-configured warehouse scenarios instantly. |
+| **Output Video** | UI Download Button | Automatically generates an `.mp4` available in the sidebar after processing. |
+| **Counting Line** | `SCENARIO_CONFIG` in `app.py` | Set the X-coordinate (`center_line`) for the vertical trigger zone. |
+| **Confidence** | Optimized in Code | Hardcoded to `conf=0.05` to guarantee maximum ByteTrack persistence during motion blur. |
+| **Live Display** | Native Streamlit UI | Real-time annotated feed displayed directly alongside IoT metrics in the browser. |
 
 ---
 
 ## Output
 
-Upon completion (or early exit with `q`), the annotated video with bounding boxes, track IDs, counting line, FPS, and total count is saved to `data/processed/output.mp4`. Each bag crossing is also logged to the console with its direction and running total.
+During execution, the Streamlit dashboard provides a live, annotated video feed alongside continuously updating metric cards for bi-directional sack movement (📥 **Unloaded** and 📤 **Loaded**) and simulated facility IoT telemetry. 
+
+Upon completion of the video stream, the fully processed video—complete with bounding boxes, persistent ByteTrack IDs, the vertical trigger line, and zone HUD overlays—is automatically compiled. Users can seamlessly save the result locally using the **"📥 Download Result Video"** button that appears in the sidebar.
